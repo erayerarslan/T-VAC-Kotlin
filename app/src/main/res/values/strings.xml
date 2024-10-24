@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">T-VAC-Kotlin</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="male">Erkek</string>
+    <string name="female">Kadın</string>
+    <string name="sing_in_info_text">Log in to the T-VAC</string>
+    <string name="update">Güncelle</string>
 </resources>
