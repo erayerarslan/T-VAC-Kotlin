@@ -73,6 +73,10 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
 
+    implementation ("androidx.activity:activity-ktx:1.6.0")
+
+
+
 
     //Nav
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")

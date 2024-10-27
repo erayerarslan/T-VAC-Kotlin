@@ -5,4 +5,5 @@
     <string name="female">Kadın</string>
     <string name="sing_in_info_text">Log in to the T-VAC</string>
     <string name="update">Güncelle</string>
+    <string name="fab_desc">Cihaz Eşle </string>
 </resources>
