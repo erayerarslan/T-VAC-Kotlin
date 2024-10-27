@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "793472090587",
+    "project_id": "t-vac-kotlin",
+    "storage_bucket": "t-vac-kotlin.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:793472090587:android:65db9cac717a132c9927fe",
+        "android_client_info": {
+          "package_name": "com.erayerarslan.t_vac_kotlin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRrOL8apgZ3IvLnpmivPm1uq1na4N3bYI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
