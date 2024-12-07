@@ -17,8 +17,10 @@ import dagger.hilt.android.AndroidEntryPoint
 import android.Manifest
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -26,8 +28,9 @@ import android.provider.Settings
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.navigation.fragment.findNavController
 import com.erayerarslan.t_vac_kotlin.model.Device
-
+import kotlinx.coroutines.delay as delay1
 
 @AndroidEntryPoint
 class DeviceFragment : Fragment() {
@@ -37,23 +40,21 @@ class DeviceFragment : Fragment() {
     private var _binding: FragmentDeviceBinding? = null
     private val binding get() = _binding!!
     private val viewModel by viewModels<DeviceViewModel>()
+    private var selectedDevice: Device? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
-            if (permissions.all { it.value
-            }) {
-                // Tüm izinler verildi
-                viewModel.startScanning()
+            if (permissions.all { it.value }) {
+                viewModel.startDiscovery()
             } else {
-                Toast.makeText(requireContext(), "İzin verilmedi.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Gerekli izinler verilmedi.", Toast.LENGTH_SHORT).show()
             }
         }
         checkPermissions()
-
-
     }
 
     override fun onCreateView(
@@ -61,6 +62,8 @@ class DeviceFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentDeviceBinding.inflate(inflater, container, false)
+
+
         return binding.root
     }
 
@@ -70,88 +73,83 @@ class DeviceFragment : Fragment() {
         recyclerView = binding.deviceRecyclerView
         deviceAdapter = DeviceAdapter(emptyList()) { device ->
             pairDevice(device)
+            selectedDevice = device
+            Toast.makeText(requireContext(), "Seçilen cihaz: ${device.name}", Toast.LENGTH_SHORT).show()
         }
         recyclerView.adapter = deviceAdapter
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        viewModel.deviceList.observe(viewLifecycleOwner) { devices ->
+        viewModel.devices.observe(viewLifecycleOwner) { devices ->
             deviceAdapter.updateDeviceList(devices)
         }
+        binding.btnStartDiscovery.setOnClickListener {
+            val selectedDevice = getSelectedDevice() // Seçilen cihazı al
+            if (selectedDevice != null) {
+                // Cihaz eşleşmesini başlat
+                viewModel.pairDevice(selectedDevice,
+                    onSuccess = {
+                        // Başarılı eşleşme sonrası veri alma işlemini başlat
+                        Toast.makeText(requireContext(), "Tarama Başlatılıyor: ${selectedDevice.name}", Toast.LENGTH_SHORT).show()
+                        binding.progressBar.visibility = View.VISIBLE
 
+                        viewModel.listenForData(selectedDevice.bluetoothDevice) // Veri alma işlemi
+                        binding.progressBar.visibility = View.GONE
+                        findNavController().popBackStack()
 
+                    },
+                    onError = { error ->
+                        // Eşleşme başarısızsa kullanıcıya bilgi göster
+                        Toast.makeText(requireContext(), "Eşleşme başarısız: $error", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            } else {
+                // Cihaz seçilmediyse uyarı ver
+                Toast.makeText(requireContext(), "Lütfen bir cihaz seçin!", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     }
+    fun getSelectedDevice(): Device? {
+        return selectedDevice
+    }
+    private fun checkPermissions() {
+        val permissionsNeeded = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.BLUETOOTH_SCAN)
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+        }
+
+        if (permissionsNeeded.isNotEmpty()) {
+            requestPermissionLauncher.launch(permissionsNeeded.toTypedArray())
+        } else {
+            viewModel.startDiscovery()
+        }
+    }
+
+    private fun pairDevice(device: Device) {
+        viewModel.pairDevice(device,
+            onSuccess = {
+                Toast.makeText(requireContext(), "Eşleşme başarılı: ${device.name}", Toast.LENGTH_SHORT).show()
 
 
-
-
-
-
+            },
+            onError = { error ->
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
 
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
-    private fun checkPermissions() {
-        val bluetoothScanPermission = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN)
-        val bluetoothConnectPermission = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-        val fineLocationPermission = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-        val coarseLocationPermission = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
-
-        // API 31 ve üzeri için
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (bluetoothScanPermission != PackageManager.PERMISSION_GRANTED ||
-                bluetoothConnectPermission != PackageManager.PERMISSION_GRANTED ||
-                fineLocationPermission != PackageManager.PERMISSION_GRANTED) {
-
-                requestPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.BLUETOOTH_SCAN,
-                        Manifest.permission.BLUETOOTH_CONNECT,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    )
-                )
-            } else {
-                viewModel.startScanning()
-            }
-        } else {
-            // API 30 ve altı için
-            if (fineLocationPermission != PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    )
-                )
-            } else {
-                viewModel.startScanning()
-            }
-        }
-    }
-
-
-    fun pairDevice(device: Device) {
-        try {
-            val bluetoothDevice = device.bluetoothDevice
-            if (bluetoothDevice.bondState != BluetoothDevice.BOND_BONDED) {
-                val success = bluetoothDevice.createBond()
-                if (success) {
-                    Toast.makeText(context, "Eşleşme isteği gönderildi.", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Eşleşme isteği gönderilemedi.", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                Toast.makeText(context, "Cihaz zaten eşleşmiş.", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(context, "Eşleşme isteği gönderilemedi.", Toast.LENGTH_SHORT).show()
-            println("Eşleşme isteği gönderilemedi: ${e.message}")
-            println(context)
-        }
-    }
-
-
-
 }

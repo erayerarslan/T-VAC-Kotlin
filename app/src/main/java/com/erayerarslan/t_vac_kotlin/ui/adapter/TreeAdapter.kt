@@ -4,9 +4,11 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.erayerarslan.t_vac_kotlin.databinding.ItemTreeBinding
 import com.erayerarslan.t_vac_kotlin.model.Tree
 import com.erayerarslan.t_vac_kotlin.model.treeList
+import com.erayerarslan.t_vac_kotlin.util.loadImage
 
 class TreeAdapter(treeList: List<Tree>) : RecyclerView.Adapter<TreeAdapter.TreeViewHolder>() {
 
@@ -24,7 +26,7 @@ class TreeAdapter(treeList: List<Tree>) : RecyclerView.Adapter<TreeAdapter.TreeV
 
     override fun onBindViewHolder(holder: TreeAdapter.TreeViewHolder, position: Int) {
         val tree = treeList[position]
-        holder.binding.treeImg.setImageResource(tree.img)
+        holder.binding.treeImg.loadImage(tree.img)
         holder.treeName.text = "Ağaç Türü: ${tree.name}"
         holder.treeTemp.text = "Sıcaklık: ${tree.temperatureRange.start} ile ${tree.temperatureRange.endInclusive} derece arasında"
         holder.treeHumadity.text = "Nem Oranı: ${tree.humidityRange.start} ile ${tree.humidityRange.endInclusive} % arasında"
@@ -41,4 +43,5 @@ class TreeAdapter(treeList: List<Tree>) : RecyclerView.Adapter<TreeAdapter.TreeV
         notifyDataSetChanged() // Liste güncellendiğinde görünümü yenileyin
 
     }
+
 }
