@@ -25,5 +25,7 @@ var treeList = listOf(
     Tree("Akasya", 15..35, 20..40, "Kuraklığa dayanıklıdır, az su gerektirir.", R.drawable.ic_acacia),
     Tree("Kavak", 10..25, 50..70, "Su kaynaklarına yakın bölgelerde daha hızlı büyür.", R.drawable.ic_poplar),
     Tree("Ardıç", 5..25, 30..50, "Soğuk ve kurak iklimlerde dayanıklıdır, dağlık alanlarda iyi yetişir.", R.drawable.ic_juniper),
-    Tree("Söğüt", 15..30, 60..80, "Su kenarlarında ve nemli topraklarda yetişir, hızla büyür.", R.drawable.ic_willow)
+    Tree("Söğüt", 15..30, 60..80, "Su kenarlarında ve nemli topraklarda yetişir, hızla büyür.", R.drawable.ic_willow),
+    Tree("Eray", 0..50, 0..50, "Soğuk ve kurak iklimlerde dayanıklıdır, dağlık alanlarda iyi yetişir.", R.drawable.ic_juniper),
+    Tree("Erarslan", 0..50, 0..50, "Soğuk ve kurak iklimlerde dayanıklıdır, dağlık alanlarda iyi yetişir.", R.drawable.ic_juniper),
 )

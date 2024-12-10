@@ -4,12 +4,8 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.erayerarslan.t_vac_kotlin.model.Tree
 import com.erayerarslan.t_vac_kotlin.model.treeList
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 class HomeViewModel (
 ): ViewModel() {

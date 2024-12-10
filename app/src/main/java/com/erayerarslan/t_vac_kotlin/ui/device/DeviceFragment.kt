@@ -28,8 +28,11 @@ import android.provider.Settings
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.isVisible
 import androidx.navigation.fragment.findNavController
+import com.erayerarslan.t_vac_kotlin.databinding.ItemDeviceBinding
 import com.erayerarslan.t_vac_kotlin.model.Device
+import kotlinx.coroutines.time.delay
 import kotlinx.coroutines.delay as delay1
 
 @AndroidEntryPoint
@@ -39,6 +42,9 @@ class DeviceFragment : Fragment() {
     private lateinit var deviceAdapter: DeviceAdapter
     private var _binding: FragmentDeviceBinding? = null
     private val binding get() = _binding!!
+
+    private var _bindingg: ItemDeviceBinding? = null
+    private val bindingg get() = _bindingg!!
     private val viewModel by viewModels<DeviceViewModel>()
     private var selectedDevice: Device? = null
 
@@ -90,11 +96,14 @@ class DeviceFragment : Fragment() {
                     onSuccess = {
                         // Başarılı eşleşme sonrası veri alma işlemini başlat
                         Toast.makeText(requireContext(), "Tarama Başlatılıyor: ${selectedDevice.name}", Toast.LENGTH_SHORT).show()
-                        binding.progressBar.visibility = View.VISIBLE
+                        viewModel.isLoading.observe(viewLifecycleOwner){ loading ->
+                            binding.progressBar.isVisible = loading
+                        }
+
 
                         viewModel.listenForData(selectedDevice.bluetoothDevice) // Veri alma işlemi
-                        binding.progressBar.visibility = View.GONE
-                        findNavController().popBackStack()
+
+
 
                     },
                     onError = { error ->
@@ -138,6 +147,14 @@ class DeviceFragment : Fragment() {
         viewModel.pairDevice(device,
             onSuccess = {
                 Toast.makeText(requireContext(), "Eşleşme başarılı: ${device.name}", Toast.LENGTH_SHORT).show()
+                //bluetooth cihzaı eşleştiğinde eşleşme logosunu göster
+                val index = deviceAdapter.deviceList.indexOf(device)
+                if (index != -1) {
+                    deviceAdapter.deviceList = deviceAdapter.deviceList.mapIndexed { i, item ->
+                        if (i == index) item.copy(isPaired = true) else item
+                    }
+                    deviceAdapter.notifyItemChanged(index)
+                }
 
 
             },

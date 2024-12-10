@@ -8,16 +8,27 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import androidx.navigation.Navigation.findNavController
+import androidx.navigation.fragment.NavHostFragment.Companion.findNavController
+import com.erayerarslan.t_vac_kotlin.databinding.FragmentDeviceBinding
+import com.erayerarslan.t_vac_kotlin.databinding.ItemDeviceBinding
 import com.erayerarslan.t_vac_kotlin.model.Device
+import com.erayerarslan.t_vac_kotlin.model.SensorData
+import com.erayerarslan.t_vac_kotlin.model.SensorDataManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import java.io.IOException
 import java.util.UUID
 import java.util.regex.Pattern
 import javax.inject.Inject
@@ -29,6 +40,13 @@ class DeviceViewModel @Inject constructor(
 
     private val _devices = MutableLiveData<List<Device>>()
     val devices: LiveData<List<Device>> get() = _devices
+    private val _isLoading = MutableLiveData<Boolean>()
+    val isLoading: LiveData<Boolean> get() = _isLoading
+    private val _sensorData = MutableLiveData<SensorData>().apply {
+        value = SensorData() // Varsayılan değerlerle başlat
+    }
+    val sensorData: LiveData<SensorData> get() = _sensorData
+
 
     private val bluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
     private val discoveredDevices = mutableListOf<Device>()
@@ -41,6 +59,7 @@ class DeviceViewModel @Inject constructor(
     private var humidityValue2: String? = null
     private var potasyumValue2: String? = null
     private var azotValue2: String? = null
+
 
 
     fun startDiscovery() {
@@ -79,6 +98,7 @@ class DeviceViewModel @Inject constructor(
     }
 
     fun pairDevice(device: Device, onSuccess: () -> Unit, onError: (String) -> Unit) {
+
         try {
             val bluetoothDevice = device.bluetoothDevice
             if (bluetoothDevice.bondState != BluetoothDevice.BOND_BONDED) {
@@ -94,6 +114,7 @@ class DeviceViewModel @Inject constructor(
                                     BluetoothDevice.BOND_BONDED -> {
                                         onSuccess()
                                         unregisterReceiver()
+
 
                                     }
                                     BluetoothDevice.BOND_NONE -> {
@@ -112,6 +133,7 @@ class DeviceViewModel @Inject constructor(
                 bluetoothDevice.createBond()
             } else {
                 onSuccess()
+
             }
         } catch (e: Exception) {
             Log.e("PairDevice", "Hata: ${e.message}")
@@ -122,18 +144,17 @@ class DeviceViewModel @Inject constructor(
 
     fun listenForData(device: BluetoothDevice) {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-                val socket = device.createRfcommSocketToServiceRecord(uuid)
-                socket.connect()
 
-                val inputStream = socket.inputStream
-                val bufferArray = ByteArray(1024)
-                var bytes: Int
 
-                while (true) {
-                    bytes = inputStream.read(bufferArray)
-                    val receivedData = String(bufferArray, 0, bytes)
+                try {
+
+                    val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+                    val socket = device.createRfcommSocketToServiceRecord(uuid)
+                    socket.connect()
+
+                    val inputStream = socket.inputStream
+                    val bufferArray = ByteArray(1024)
+                    var bytes: Int
                     phValue2= null
                     temperatureValue2= null
                     conductibilityValue2= null
@@ -141,68 +162,94 @@ class DeviceViewModel @Inject constructor(
                     humidityValue2= null
                     potasyumValue2= null
 
-                    // Gelen veriyi tamponda birleştir
-                    buffer.append(receivedData)
+                    while (true) {
+                        bytes = inputStream.read(bufferArray)
+                        val receivedData = String(bufferArray, 0, bytes)
 
-                    // Mesajın tamamlandığını kontrol et
-                    if (buffer.contains("\n")) {
-                        val completeMessage = buffer.toString()
-                        buffer.clear() // Tamponu temizle
-                         Log.d("BluetoothData", "Tam mesaj: $completeMessage")
+                        // Gelen veriyi tamponda birleştir
+                        buffer.append(receivedData)
 
-                        val phValue = extractPhValue(completeMessage)
-                        if (phValue != null && phValue != "0.00") {
-                              phValue2 = phValue
-                            println("phValue2: " + phValue2)
-                        }
-                        val temperatureValue = extractTemperatureValue(completeMessage)
-                        if (temperatureValue != null && temperatureValue != "0.00") {
-                             temperatureValue2 = temperatureValue
-                            println("temperatureValue2: " + temperatureValue2)
-                        }
-                        val conductibilityValue = extractConductibilityValue(completeMessage)
-                        if (conductibilityValue != null && conductibilityValue != "0") {
-                             conductibilityValue2 = conductibilityValue
-                            println("conductibilityValue2: "+conductibilityValue2)
-                        }
-                        val fosforValue = extractFosforValue(completeMessage)
-                        if (fosforValue != null && fosforValue != "0") {
-                            fosforValue2 = fosforValue
-                            println("fosforValue2: "+fosforValue2)
-                        }
-                        val humidityValue = extractHumidityValue(completeMessage)
-                        if ( humidityValue != null && humidityValue != "0" && humidityValue != "0.00") {
-                            humidityValue2 = humidityValue
-                            println("humidityValue2: "+humidityValue2)
-                        }
-                        val potasyumValue = extractPotasyumValue(completeMessage)
-                        if (potasyumValue != null && potasyumValue != "0" && potasyumValue != "0.00") {
-                            potasyumValue2 = potasyumValue
+                        // Mesajın tamamlandığını kontrol et
+                        if (buffer.contains("\n")) {
+                            val completeMessage = buffer.toString()
+                            buffer.clear() // Tamponu temizle
+                            Log.d("BluetoothData", "Tam mesaj: $completeMessage")
 
-                            println("potasyumValue2: "+potasyumValue2)
-                        }
-                        val azotValue = extractAzotValue(completeMessage)
-                        if (azotValue != null && azotValue != "0" && azotValue != "0.00") {
-                            azotValue2 = azotValue
+                            val phValue = extractPhValue(completeMessage)
+                            if (phValue != null && phValue != "0.00") {
+                                phValue2 = phValue
+                                println("phValue2: " + phValue2)
+                            }
+                            val temperatureValue = extractTemperatureValue(completeMessage)
+                            if (temperatureValue != null && temperatureValue != "0.00") {
+                                temperatureValue2 = temperatureValue
+                                println("temperatureValue2: " + temperatureValue2)
+                            }
+                            val conductibilityValue = extractConductibilityValue(completeMessage)
+                            if (conductibilityValue != null && conductibilityValue != "0") {
+                                conductibilityValue2 = conductibilityValue
+                                println("conductibilityValue2: "+conductibilityValue2)
+                            }
+                            val fosforValue = extractFosforValue(completeMessage)
+                            if (fosforValue != null && fosforValue != "0") {
+                                fosforValue2 = fosforValue
+                                println("fosforValue2: "+fosforValue2)
+                            }
+                            val humidityValue = extractHumidityValue(completeMessage)
+                            if ( humidityValue != null && humidityValue != "0" && humidityValue != "0.00") {
+                                humidityValue2 = humidityValue
+                                println("humidityValue2: "+humidityValue2)
+                            }
+                            val potasyumValue = extractPotasyumValue(completeMessage)
+                            if (potasyumValue != null && potasyumValue != "0" && potasyumValue != "0.00") {
+                                potasyumValue2 = potasyumValue
 
-                            println("azotValue2: "+azotValue2)
+                                println("potasyumValue2: "+potasyumValue2)
+                            }
+                            val azotValue = extractAzotValue(completeMessage)
+                            if (azotValue != null && azotValue != "0" && azotValue != "0.00") {
+                                azotValue2 = azotValue
+
+                                println("azotValue2: "+azotValue2)
+                            }
+                            if (!phValue2.isNullOrEmpty() && !temperatureValue2.isNullOrEmpty() && !conductibilityValue2.isNullOrEmpty() && !fosforValue2.isNullOrEmpty() && !humidityValue2.isNullOrEmpty() && !potasyumValue2.isNullOrEmpty() && !azotValue2.isNullOrEmpty()){
+                                println("başarılı")
+                                viewModelScope.launch {
+                                    val data = SensorData(
+                                        phValue = phValue2!!,
+                                        temperatureValue = temperatureValue2!!,
+                                        conductibilityValue = conductibilityValue2!!,
+                                        fosforValue = fosforValue2!!,
+                                        humidityValue = humidityValue2!!,
+                                        potasyumValue = potasyumValue2!!,
+                                        azotValue = azotValue2!!
+                                    )
+                                    saveSensorData(data)
+                                    Log.d("DeviceViewModel", "sensorData güncellendi: $data")
+                                }
+
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(appContext, "Veri alındı: $_sensorData", Toast.LENGTH_SHORT).show()
+                                }
+                                socket.close()
+                                break
+                            }
+                            delay(5000)
+
                         }
-                        if (!phValue2.isNullOrEmpty() && !temperatureValue2.isNullOrEmpty() && !conductibilityValue2.isNullOrEmpty() && !fosforValue2.isNullOrEmpty() && !humidityValue2.isNullOrEmpty() && !potasyumValue2.isNullOrEmpty() && !azotValue2.isNullOrEmpty()){
-                            println("başarılı")
-                            break
-                        }
-                        delay(5000)
 
                     }
 
+                } catch (e: Exception) {
+                    Log.e("BluetoothData", "Veri alma hatası: ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e("BluetoothData", "Veri alma hatası: ${e.message}")
-            }
+
         }
-
     }
-
+    fun saveSensorData(data: SensorData) {
+        SensorDataManager.sensorData = data
+        Log.d("DeviceViewModel", "SensorData kaydedildi: $data")
+    }
     private fun extractPhValue(message: String): String? {
         val regex = """pH:\s*([\d.]+)""" // pH: ve ardından sayıyı yakalar
         val pattern = Pattern.compile(regex)

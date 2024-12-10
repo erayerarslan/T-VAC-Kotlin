@@ -9,14 +9,17 @@ import com.erayerarslan.t_vac_kotlin.R
 import com.erayerarslan.t_vac_kotlin.databinding.ItemDeviceBinding
 import com.erayerarslan.t_vac_kotlin.model.Device
 
-class DeviceAdapter(private var deviceList: List<Device>,private val onDeviceClick: (Device) -> Unit)
+class DeviceAdapter(var deviceList: List<Device>, private val onDeviceClick: (Device) -> Unit)
     : RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder>() {
     inner class DeviceViewHolder(val binding: ItemDeviceBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(device: Device) {
             binding.deviceName.text = device.name
             binding.deviceAddress.text = device.address
+            binding.comeBlueIcon.visibility = if (device.isPaired) View.VISIBLE else View.GONE
             itemView.setOnClickListener {
                 onDeviceClick(device) // Cihaz tıklandığında onDeviceClick fonksiyonu çağrılır
+               // binding.comeBlueIcon.visibility = View.VISIBLE
+
             }
         }
 
@@ -32,6 +35,7 @@ class DeviceAdapter(private var deviceList: List<Device>,private val onDeviceCli
 
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
         holder.bind(deviceList[position]) // Burada bir hata olabilir
+
     }
 
     override fun getItemCount(): Int = deviceList.size
