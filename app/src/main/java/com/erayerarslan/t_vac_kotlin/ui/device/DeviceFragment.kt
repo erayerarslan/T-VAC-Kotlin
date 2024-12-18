@@ -32,6 +32,7 @@ import androidx.core.view.isVisible
 import androidx.navigation.fragment.findNavController
 import com.erayerarslan.t_vac_kotlin.databinding.ItemDeviceBinding
 import com.erayerarslan.t_vac_kotlin.model.Device
+import com.erayerarslan.t_vac_kotlin.model.SensorDataManager
 import kotlinx.coroutines.time.delay
 import kotlinx.coroutines.delay as delay1
 
@@ -96,10 +97,14 @@ class DeviceFragment : Fragment() {
                     onSuccess = {
                         // Başarılı eşleşme sonrası veri alma işlemini başlat
                         Toast.makeText(requireContext(), "Tarama Başlatılıyor: ${selectedDevice.name}", Toast.LENGTH_SHORT).show()
-                        viewModel.isLoading.observe(viewLifecycleOwner){ loading ->
-                            binding.progressBar.isVisible = loading
-                        }
 
+                        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+                            binding.progressBar.isVisible = isLoading
+                            if (!isLoading) {
+                                // Yükleme tamamlandığında kullanıcıyı ana sayfaya yönlendir
+                                findNavController().popBackStack()
+                            }
+                        }
 
                         viewModel.listenForData(selectedDevice.bluetoothDevice) // Veri alma işlemi
 

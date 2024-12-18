@@ -12,10 +12,10 @@ class HomeViewModel (
     private val _filteredTreeList = MutableLiveData<List<Tree>>()
     val filteredTreeList: LiveData<List<Tree>> get() = _filteredTreeList
 
-
+    val homefilterlist = treeList
 
     fun fetchTreeList(temperature: Int, humidity: Int) {
-        val filteredList = treeList.filter { tree ->
+        val filteredList = homefilterlist.filter { tree ->
             tree.isSuitable(temperature, humidity)
 
         }

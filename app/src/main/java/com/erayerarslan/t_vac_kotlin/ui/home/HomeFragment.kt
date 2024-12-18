@@ -45,7 +45,7 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        recyclerView = binding.treeRecyclerView
+        recyclerView = binding.treeRecyclerViewHome
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         return binding.root
     }
@@ -64,6 +64,7 @@ class HomeFragment : Fragment() {
         observeEvents()
 
         swipeRefreshLayout.setOnRefreshListener {
+
             refreshData()
 
 

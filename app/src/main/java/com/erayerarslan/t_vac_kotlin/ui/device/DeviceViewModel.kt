@@ -10,6 +10,7 @@ import android.os.Build
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -45,6 +46,8 @@ class DeviceViewModel @Inject constructor(
     private val _sensorData = MutableLiveData<SensorData>().apply {
         value = SensorData() // Varsayılan değerlerle başlat
     }
+    private var _binding: FragmentDeviceBinding? = null
+    private val binding get() = _binding!!
     val sensorData: LiveData<SensorData> get() = _sensorData
 
 
@@ -147,7 +150,7 @@ class DeviceViewModel @Inject constructor(
 
 
                 try {
-
+                    _isLoading.postValue(true)
                     val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
                     val socket = device.createRfcommSocketToServiceRecord(uuid)
                     socket.connect()
@@ -163,6 +166,7 @@ class DeviceViewModel @Inject constructor(
                     potasyumValue2= null
 
                     while (true) {
+
                         bytes = inputStream.read(bufferArray)
                         val receivedData = String(bufferArray, 0, bytes)
 
@@ -225,6 +229,7 @@ class DeviceViewModel @Inject constructor(
                                         azotValue = azotValue2!!
                                     )
                                     saveSensorData(data)
+
                                     Log.d("DeviceViewModel", "sensorData güncellendi: $data")
                                 }
 
@@ -240,9 +245,14 @@ class DeviceViewModel @Inject constructor(
 
                     }
 
+
                 } catch (e: Exception) {
                     Log.e("BluetoothData", "Veri alma hatası: ${e.message}")
                 }
+            finally {
+                _isLoading.postValue(false)
+
+            }
 
         }
     }

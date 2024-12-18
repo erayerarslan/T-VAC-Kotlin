@@ -9,9 +9,14 @@ data class Tree(
     val features: String,
     val img:Int
 ){
+
+
     // Uygun sıcaklık ve nem aralıkları için kontrol işlevi
     fun isSuitable(temperature: Int, humidity: Int): Boolean {
         return temperature in temperatureRange && humidity in humidityRange
+    }
+    fun nameFilter(query: String): Boolean {
+        return name.contains(query, ignoreCase = true)
     }
 }
 
