@@ -19,10 +19,9 @@ plugins {
     alias(libs.plugins.org.jetbrains.kotlin.kapt) apply false
 
 
-
-
 }
 
 tasks.register("clean", Delete::class) {
     delete(project.layout.buildDirectory)
 }
+
