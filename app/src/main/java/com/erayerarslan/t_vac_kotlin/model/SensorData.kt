@@ -1,4 +1,5 @@
 package com.erayerarslan.t_vac_kotlin.model
+import kotlin.random.Random
 
 data class SensorData(
     val phValue: String = "1",
@@ -9,9 +10,15 @@ data class SensorData(
     val potasyumValue: String = "1",
     val azotValue: String = "1"
 )
+
 object SensorDataManager {
     var sensorData: SensorData? = null
 }
+
+fun generateRandomFloat(min: Float, max: Float): Float {
+    return Random.nextFloat() * (max - min) + min
+}
+
 
 
 

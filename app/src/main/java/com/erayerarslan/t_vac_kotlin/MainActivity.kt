@@ -47,14 +47,7 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
-
-
     }
-
-
-
-
-
 
     private fun createBottomNavigation() {
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment

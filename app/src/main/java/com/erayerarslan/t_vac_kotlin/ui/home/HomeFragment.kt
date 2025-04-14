@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -20,7 +21,9 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.erayerarslan.t_vac_kotlin.R
 import com.erayerarslan.t_vac_kotlin.databinding.FragmentHomeBinding
 import com.erayerarslan.t_vac_kotlin.model.SensorDataManager
+import com.erayerarslan.t_vac_kotlin.model.generateRandomFloat
 import com.erayerarslan.t_vac_kotlin.ui.adapter.TreeAdapter
+import com.erayerarslan.t_vac_kotlin.ui.device.DeviceFragment
 import com.erayerarslan.t_vac_kotlin.ui.device.DeviceViewModel
 import com.github.mikephil.charting.charts.HorizontalBarChart
 import com.github.mikephil.charting.data.BarData
@@ -29,6 +32,9 @@ import com.github.mikephil.charting.data.BarEntry
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dagger.hilt.android.AndroidEntryPoint
 import com.github.mikephil.charting.components.XAxis
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @AndroidEntryPoint
@@ -49,14 +55,13 @@ class HomeFragment : Fragment() {
     private lateinit var nitrogenChart: HorizontalBarChart
     private lateinit var temperatureChart: HorizontalBarChart
 
-
-    private lateinit var phValue:String
-    private lateinit var temperatureValue :String
-    private lateinit var conductibilityValue :String
-    private lateinit var fosforValue :String
-    private lateinit var humidityValue:String
-    private lateinit var potasyumValue:String
-    private lateinit var azotValue:String
+    private lateinit var phValue: String
+    private lateinit var temperatureValue: String
+    private lateinit var conductibilityValue: String
+    private lateinit var fosforValue: String
+    private lateinit var humidityValue: String
+    private lateinit var potasyumValue: String
+    private lateinit var azotValue: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,13 +89,13 @@ class HomeFragment : Fragment() {
         }
 
 
-        phValue = SensorDataManager.sensorData?.phValue ?: "1"
-        temperatureValue =SensorDataManager.sensorData?.temperatureValue ?: "1"
-        conductibilityValue = SensorDataManager.sensorData?.conductibilityValue?: "1"
-        fosforValue = SensorDataManager.sensorData?.fosforValue?: "1"
-        humidityValue = SensorDataManager.sensorData?.humidityValue?: "1"
-        potasyumValue = SensorDataManager.sensorData?.potasyumValue?: "1"
-        azotValue = SensorDataManager.sensorData?.azotValue?: "1"
+        phValue = SensorDataManager.sensorData?.phValue ?: generateRandomFloat(5.0f, 7.5f).toString()
+        temperatureValue = SensorDataManager.sensorData?.temperatureValue ?: generateRandomFloat(5.0f, 30.0f).toString()
+        conductibilityValue = SensorDataManager.sensorData?.conductibilityValue ?: generateRandomFloat(0.2f, 2.5f).toString()
+        fosforValue = SensorDataManager.sensorData?.fosforValue ?: generateRandomFloat(5.0f, 50.0f).toString()
+        humidityValue = SensorDataManager.sensorData?.humidityValue ?: generateRandomFloat(10.0f, 60.0f).toString()
+        potasyumValue = SensorDataManager.sensorData?.potasyumValue ?: generateRandomFloat(50.0f, 300.0f).toString()
+        azotValue = SensorDataManager.sensorData?.azotValue ?: generateRandomFloat(0.1f, 2.0f).toString()
 
         adapter = TreeAdapter(emptyList())
         recyclerView.isVisible = false
@@ -150,6 +155,20 @@ class HomeFragment : Fragment() {
 //        }
 //    }
 
+
+    private fun requestNewData() {
+        val deviceFragment =
+            parentFragmentManager.findFragmentByTag("DeviceFragment") as DeviceFragment
+        deviceFragment.let {
+            it.selectedDevice?.bluetoothDevice?.let { device ->
+                deviceViewModel.listenForData(device)
+            } ?: run {
+                Toast.makeText(requireContext(), "Bağlı cihaz bulunamadı!", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    }
+
     private fun setupUI() {
         // Set gradient background for header
         val headerCard = binding.headerCard
@@ -173,16 +192,13 @@ class HomeFragment : Fragment() {
         temperatureChart = binding.temperatureChart
 
         // Set up buttons
-        val exportButton = binding.exportButton
-        val analysisButton = binding.analysisButton
+        val refreshDataButton = binding.refreshDataButton
 
-        exportButton.setOnClickListener {
-
+        refreshDataButton.setOnClickListener {
+            requestNewData()
+            analysisDate()
         }
 
-        analysisButton.setOnClickListener {
-            // Handle analysis functionality
-        }
     }
 
     private fun setupCharts() {
@@ -222,35 +238,56 @@ class HomeFragment : Fragment() {
     }
 
     private fun loadData() {
+        var normalCount = 0
+        var criticalCount = 0
+
+        // Humidity
         humidityValue.toFloat().let {
-            setupParameterChart(soilMoistureChart, "Soil Moisture",
-                it, getHumidityColor(it), getHumidityStatus(it))
+            val status = getHumidityStatus(it)
+            setupParameterChart(soilMoistureChart, "Soil Moisture", getHumidityColor(it), status)
+            if (status == "Normal") normalCount++ else criticalCount++
         }
+        // pH Value
         phValue.toFloat().let {
-            setupParameterChart(phValueChart, "pH Value",
-                it, getPhColor(it), getPhStatus(it))
+            val status = getPhStatus(it)
+            setupParameterChart(phValueChart, "pH Value", getPhColor(it), status)
+            if (status == "Normal") normalCount++ else criticalCount++
         }
+        // Conductivity
         conductibilityValue.toFloat().let {
-            setupParameterChart(conductivityChart, "Conductivity",
-                it, getConductivityColor(it), getConductivityStatus(it))
+            val status = getConductivityStatus(it)
+            setupParameterChart(conductivityChart, "Conductivity", getConductivityColor(it), status)
+            if (status == "Normal") normalCount++ else criticalCount++
         }
-        fosforValue.toFloat()?.let {
-            setupParameterChart(phosphorusChart, "Phosphorus",
-                it, getPhosphorusColor(it), getPhosphorusStatus(it))
+        // Phosphorus
+        fosforValue.toFloat().let {
+            val status = getPhosphorusStatus(it)
+            setupParameterChart(phosphorusChart, "Phosphorus", getPhosphorusColor(it), status)
+            if (status == "Normal") normalCount++ else criticalCount++
         }
+        // Potassium
         potasyumValue.toFloat().let {
-            setupParameterChart(potassiumChart, "Potassium",
-                it, getPotassiumColor(it), getPotassiumStatus(it))
+            val status = getPotassiumStatus(it)
+            setupParameterChart(potassiumChart, "Potassium", getPotassiumColor(it), status)
+            if (status == "Normal") normalCount++ else criticalCount++
         }
+        // Nitrogen
         azotValue.toFloat().let {
-            setupParameterChart(nitrogenChart, "Nitrogen",
-                it, getNitrogenColor(it), getNitrogenStatus(it))
+            val status = getNitrogenStatus(it)
+            setupParameterChart(nitrogenChart, "Nitrogen", getNitrogenColor(it), status)
+            if (status == "Normal") normalCount++ else criticalCount++
         }
+        // Temperature
         temperatureValue.toFloat().let {
-            setupParameterChart(temperatureChart, "Temperature",
-                it, getTemperatureColor(it), getTemperatureStatus(it))
-            println(temperatureValue)
+            val status = getTemperatureStatus(it)
+            setupParameterChart(temperatureChart, "Temperature", getTemperatureColor(it), status)
+            if (status == "Normal") normalCount++ else criticalCount++
         }
+
+        // Update the TextViews
+        binding.optimalTextView.text = "$normalCount"
+        binding.criticalTextView.text = "$criticalCount"
+        binding.totalTextView.text = "${normalCount.plus(criticalCount)}"
     }
 
     private fun getPhStatus(value: Float): String {
@@ -263,15 +300,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun getPhColor(value: Float): String {
-        return when {
-            value < 5.0 -> "#FF0000" // Kırmızı
-            value < 5.5 -> "#FFA500" // Turuncu
-            value < 6.5 -> "#00FF00" // Yeşil
-            value < 7.5 -> "#FFFF00" // Sarı
-            else -> "#8A2BE2" // Mor
-        }
-    }
 
     private fun getTemperatureStatus(value: Float): String {
         return when {
@@ -283,15 +311,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun getTemperatureColor(value: Float): String {
-        return when {
-            value < 5 -> "#0000FF" // Mavi
-            value < 10 -> "#1E90FF" // Açık Mavi
-            value < 25 -> "#00FF00" // Yeşil
-            value < 30 -> "#FFFF00" // Sarı
-            else -> "#FF4500" // Kırmızı-Turuncu
-        }
-    }
 
     private fun getConductivityStatus(value: Float): String {
         return when {
@@ -303,15 +322,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun getConductivityColor(value: Float): String {
-        return when {
-            value < 0.2 -> "#FF0000" // Kırmızı
-            value < 0.5 -> "#FFA500" // Turuncu
-            value < 1.5 -> "#00FF00" // Yeşil
-            value < 2.5 -> "#FFFF00" // Sarı
-            else -> "#8A2BE2" // Mor
-        }
-    }
 
     private fun getPhosphorusStatus(value: Float): String {
         return when {
@@ -323,15 +333,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun getPhosphorusColor(value: Float): String {
-        return when {
-            value < 5 -> "#FF0000"
-            value < 10 -> "#FFA500"
-            value < 30 -> "#00FF00"
-            value < 50 -> "#FFFF00"
-            else -> "#8A2BE2"
-        }
-    }
 
     private fun getPotassiumStatus(value: Float): String {
         return when {
@@ -343,15 +344,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun getPotassiumColor(value: Float): String {
-        return when {
-            value < 50 -> "#FF0000"
-            value < 100 -> "#FFA500"
-            value < 200 -> "#00FF00"
-            value < 300 -> "#FFFF00"
-            else -> "#8A2BE2"
-        }
-    }
 
     private fun getNitrogenStatus(value: Float): String {
         return when {
@@ -363,15 +355,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun getNitrogenColor(value: Float): String {
-        return when {
-            value < 0.1 -> "#FF0000"
-            value < 0.5 -> "#FFA500"
-            value < 1.0 -> "#00FF00"
-            value < 2.0 -> "#FFFF00"
-            else -> "#8A2BE2"
-        }
-    }
 
     private fun getHumidityStatus(value: Float): String {
         return when {
@@ -383,21 +366,97 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private fun getPhColor(value: Float): String {
+        return when {
+            value < 5.0 -> "#FF0000" // Kırmızı (Very Low)
+            value < 5.5 -> "#FFA500" // Turuncu (Low)
+            value < 6.5 -> "#00FF00" // Yeşil (Normal)
+            value < 7.5 -> "#FFA500" // Turuncu (High)
+            else -> "#FF0000" // Kırmızı (Very High)
+        }
+    }
+
+    private fun getTemperatureColor(value: Float): String {
+        return when {
+            value < 5 -> "#FF0000" // Kırmızı (Very Low)
+            value < 10 -> "#FFA500" // Turuncu (Low)
+            value < 25 -> "#00FF00" // Yeşil (Normal)
+            value < 30 -> "#FFA500" // Turuncu (High)
+            else -> "#FF0000" // Kırmızı (Very High)
+        }
+    }
+
+    private fun getConductivityColor(value: Float): String {
+        return when {
+            value < 0.2 -> "#FF0000" // Kırmızı (Very Low)
+            value < 0.5 -> "#FFA500" // Turuncu (Low)
+            value < 1.5 -> "#00FF00" // Yeşil (Normal)
+            value < 2.5 -> "#FFA500" // Turuncu (High)
+            else -> "#FF0000" // Kırmızı (Very High)
+        }
+    }
+
+    private fun getPhosphorusColor(value: Float): String {
+        return when {
+            value < 5 -> "#FF0000" // Kırmızı (Very Low)
+            value < 10 -> "#FFA500" // Turuncu (Low)
+            value < 30 -> "#00FF00" // Yeşil (Normal)
+            value < 50 -> "#FFA500" // Turuncu (High)
+            else -> "#FF0000" // Kırmızı (Very High)
+        }
+    }
+
+    private fun getPotassiumColor(value: Float): String {
+        return when {
+            value < 50 -> "#FF0000" // Kırmızı (Very Low)
+            value < 100 -> "#FFA500" // Turuncu (Low)
+            value < 200 -> "#00FF00" // Yeşil (Normal)
+            value < 300 -> "#FFA500" // Turuncu (High)
+            else -> "#FF0000" // Kırmızı (Very High)
+        }
+    }
+
+    private fun getNitrogenColor(value: Float): String {
+        return when {
+            value < 0.1 -> "#FF0000" // Kırmızı (Very Low)
+            value < 0.5 -> "#FFA500" // Turuncu (Low)
+            value < 1.0 -> "#00FF00" // Yeşil (Normal)
+            value < 2.0 -> "#FFA500" // Turuncu (High)
+            else -> "#FF0000" // Kırmızı (Very High)
+        }
+    }
+
     private fun getHumidityColor(value: Float): String {
         return when {
-            value < 10 -> "#FF0000"
-            value < 25 -> "#FFA500"
-            value < 40 -> "#00FF00"
-            value < 60 -> "#FFFF00"
-            else -> "#8A2BE2"
+            value < 10 -> "#FF0000" // Kırmızı (Very Low)
+            value < 25 -> "#FFA500" // Turuncu (Low)
+            value < 40 -> "#00FF00" // Yeşil (Normal)
+            value < 60 -> "#FFA500" // Turuncu (High)
+            else -> "#FF0000" // Kırmızı (Very High)
         }
     }
 
 
-    private fun setupParameterChart(chart: HorizontalBarChart, parameter: String, value: Float, colorHex: String, status: String) {
+
+    private fun setupParameterChart(
+        chart: HorizontalBarChart,
+        parameter: String,
+        colorHex: String,
+        status: String
+    ) {
+        // Duruma göre çubuk uzunluğunu hesapla
+        val barValue = when (status) {
+            "Very Low" -> 0.10f // %10
+            "Low" -> 0.25f      // %25
+            "Normal" -> 0.50f   // %50
+            "High" -> 0.75f     // %75
+            "Very High" -> 1.0f // %100
+            else -> 0f        // Varsayılan durum
+        }
+
         // Create entries for the chart
         val entries = ArrayList<BarEntry>()
-        entries.add(BarEntry(0f, value))
+        entries.add(BarEntry(0f, barValue))
 
         // Create dataset and customize appearance
         val dataSet = BarDataSet(entries, parameter)
@@ -423,10 +482,18 @@ class HomeFragment : Fragment() {
 
         if (parameterIndex >= 0) {
             val parameterNameView = binding.root.findViewById<TextView>(
-                resources.getIdentifier("parameter_name_$parameterIndex", "id", requireContext().packageName)
+                resources.getIdentifier(
+                    "parameter_name_$parameterIndex",
+                    "id",
+                    requireContext().packageName
+                )
             )
             val parameterStatusView = binding.root.findViewById<TextView>(
-                resources.getIdentifier("parameter_status_$parameterIndex", "id", requireContext().packageName)
+                resources.getIdentifier(
+                    "parameter_status_$parameterIndex",
+                    "id",
+                    requireContext().packageName
+                )
             )
 
             parameterNameView?.text = parameter
@@ -434,8 +501,17 @@ class HomeFragment : Fragment() {
             parameterStatusView?.setTextColor(Color.parseColor(colorHex))
         }
 
-
         // Refresh chart
         chart.invalidate()
+    }
+    private fun analysisDate(){
+        val currentTimeMillis = System.currentTimeMillis()
+        val date = Date(currentTimeMillis)
+
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val formattedDate = sdf.format(date)
+
+
+        binding.lastUpdatedText.text = "Tıklama Tarihi: $formattedDate"
     }
 }

@@ -47,7 +47,7 @@ class DeviceFragment : Fragment() {
     private var _bindingg: ItemDeviceBinding? = null
     private val bindingg get() = _bindingg!!
     private val viewModel by viewModels<DeviceViewModel>()
-    private var selectedDevice: Device? = null
+    var selectedDevice: Device? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,7 +90,7 @@ class DeviceFragment : Fragment() {
             deviceAdapter.updateDeviceList(devices)
         }
         binding.btnStartDiscovery.setOnClickListener {
-            val selectedDevice = getSelectedDevice() // Seçilen cihazı al
+            val selectedDevice = selectedDevice
             if (selectedDevice != null) {
                 // Cihaz eşleşmesini başlat
                 viewModel.pairDevice(selectedDevice,
@@ -123,9 +123,7 @@ class DeviceFragment : Fragment() {
         }
 
     }
-    fun getSelectedDevice(): Device? {
-        return selectedDevice
-    }
+
     private fun checkPermissions() {
         val permissionsNeeded = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

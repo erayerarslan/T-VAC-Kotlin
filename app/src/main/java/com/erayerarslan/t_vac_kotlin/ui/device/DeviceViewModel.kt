@@ -63,8 +63,6 @@ class DeviceViewModel @Inject constructor(
     private var potasyumValue2: String? = null
     private var azotValue2: String? = null
 
-
-
     fun startDiscovery() {
         if (!bluetoothAdapter.isEnabled) {
             Toast.makeText(appContext, "Bluetooth kapalı, lütfen açın!", Toast.LENGTH_SHORT).show()
@@ -144,7 +142,6 @@ class DeviceViewModel @Inject constructor(
         }
     }
     private var buffer = StringBuilder()
-
     fun listenForData(device: BluetoothDevice) {
         CoroutineScope(Dispatchers.IO).launch {
 
@@ -256,10 +253,12 @@ class DeviceViewModel @Inject constructor(
 
         }
     }
+
     fun saveSensorData(data: SensorData) {
         SensorDataManager.sensorData = data
         Log.d("DeviceViewModel", "SensorData kaydedildi: $data")
     }
+
     private fun extractPhValue(message: String): String? {
         val regex = """pH:\s*([\d.]+)""" // pH: ve ardından sayıyı yakalar
         val pattern = Pattern.compile(regex)
@@ -271,6 +270,7 @@ class DeviceViewModel @Inject constructor(
             null // Eğer pH bulunamazsa null döner
         }
     }
+
     private fun extractTemperatureValue(message: String): String? {
         val regex = """Sicaklik:\s*([\d.]+)""" // pH: ve ardından sayıyı yakalar
         val pattern = Pattern.compile(regex)
